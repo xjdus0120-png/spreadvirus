@@ -3,975 +3,513 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>응급실 공기 전파 비교 시뮬레이터 · 2단계</title>
+<title>응급실 공기 감염 위험 비교 시뮬레이터</title>
 <style>
-  :root{ --line:#d1d5db; --ink:#111827; --muted:#4b5563; }
-  *{box-sizing:border-box}
-  body{margin:0;background:#f6f7f9;color:var(--ink);
-       font:17px/1.5 "Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}
-  header{background:#111827;color:#fff;padding:10px 18px;display:flex;flex-wrap:wrap;gap:6px 20px;align-items:center}
-  header h1{font-size:21px;margin:0}
-  .modebar{background:#fde68a;color:#422006;padding:7px 18px;font-weight:700;font-size:17px}
-  main{padding:12px;display:flex;flex-direction:column;gap:12px}
-  section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  h2{font-size:20px;margin:0 0 8px}
-  h3{font-size:17px;margin:12px 0 6px}
-  .maps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  @media (max-width:900px){ .maps{grid-template-columns:1fr} }
-  .mapbox{border:3px solid transparent;border-radius:8px;padding:4px;cursor:pointer}
-  .mapbox.sel{border-color:#1d4ed8}
-  .mapbox h4{margin:0 0 4px;font-size:16px}
-  canvas{display:block;width:100%;background:#fff}
-  .controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:8px 0}
-  .controls label{font-size:16px}
-  input[type=range]{width:min(560px,90vw)}
-  button{font-size:17px;padding:8px 12px;border-radius:7px;border:1px solid #1f2937;background:#1f2937;color:#fff;cursor:pointer;font-weight:700}
-  button.sec{background:#fff;color:#1f2937}
-  button.preset.sel{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
-  button:disabled{opacity:.5;cursor:wait}
-  .note{font-size:14px;color:var(--muted)}
-  .banner{padding:8px 10px;border-radius:7px;font-weight:700;margin:6px 0}
-  .warn{background:#fef3c7;color:#713f12;border:2px solid #f59e0b}
-  .fail{background:#fee2e2;color:#7f1d1d;border:2px solid #dc2626}
-  .ok{background:#dcfce7;color:#14532d;border:2px solid #16a34a}
-  .run{background:#e0e7ff;color:#1e3a8a;border:2px solid #6366f1}
-  table{border-collapse:collapse;width:100%;font-size:15px}
-  th,td{border:1px solid var(--line);padding:4px 7px;text-align:left;vertical-align:top}
-  th{background:#f3f4f6}
-  td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .pass{color:#15803d;font-weight:800}
-  .failt{color:#b91c1c;font-weight:800}
-  .untrusted{opacity:.4;filter:grayscale(1)}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:1100px){ .two{grid-template-columns:1fr} }
-  .tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 6px;border-radius:4px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b}
-  progress{width:100%;height:14px}
-  ul{margin:4px 0;padding-left:20px;font-size:15px}
+  /* 빔프로젝터에서도 잘 보이도록 글자를 크게, 색 대비를 강하게 */
+  body {
+    margin: 0;
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-size: 18px;
+    color: #111;
+    background: #f2f4f7;
+    padding-bottom: 90px; /* 하단 고정 문구에 가리지 않도록 */
+  }
+  header { background: #1d3557; color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 28px; }
+  header p { margin: 6px 0 0; font-size: 17px; opacity: 0.9; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  section {
+    background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  h2 { margin: 0 0 12px; font-size: 23px; color: #1d3557; }
+
+  /* 입력값 */
+  #inputs_main { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); } /* 위쪽 4개는 한 줄에 */
+  details { margin-top: 14px; border: 2px solid #c5cdd8; border-radius: 8px; padding: 8px 14px; }
+  summary { font-size: 20px; font-weight: bold; color: #1d3557; cursor: pointer; }
+  details .inputs { margin-top: 10px; }
+  .inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px 24px; }
+  .row { display: flex; flex-direction: column; }
+  .row label { font-weight: bold; }
+  .row .line { display: flex; align-items: center; gap: 10px; }
+  .row input[type=range] { flex: 1; height: 28px; }
+  .row input[type=number] { width: 140px; font-size: 18px; padding: 4px; }
+  .row input[type=checkbox] { width: 26px; height: 26px; }
+  .row .val { min-width: 110px; font-weight: bold; color: #c1121f; text-align: right; }
+  .note { font-size: 15px; color: #555; }
+
+  /* 결과 카드 */
+  #cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .card { border: 3px solid #1d3557; border-radius: 10px; padding: 12px; text-align: center;
+          display: flex; flex-direction: column; justify-content: space-between; } /* 숫자 높이 맞추기 */
+  .card .name { font-size: 19px; font-weight: bold; }
+  .card .num { font-size: 46px; font-weight: bold; color: #c1121f; margin-top: 6px; }
+  #warning {
+    display: none; background: #ffe0e0; border: 3px solid #c1121f; color: #8b0000;
+    font-weight: bold; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 20px;
+  }
+
+  /* 버튼 */
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .btns b { min-width: 120px; }
+  button {
+    font-size: 18px; padding: 8px 14px; border: 2px solid #1d3557; background: #fff;
+    border-radius: 8px; cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: #1d3557; color: #fff; }
+
+  /* 그래프 */
+  canvas { width: 100%; height: 400px; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 8px; font-size: 17px; }
+  .legend span.sw { display: inline-block; width: 34px; height: 0; border-top-width: 4px; vertical-align: middle; margin-right: 6px; }
+
+  /* 테스트 표 */
+  table { border-collapse: collapse; width: 100%; font-size: 16px; margin-top: 10px; }
+  th, td { border: 1px solid #999; padding: 5px 8px; text-align: center; }
+  th { background: #e3e8ef; }
+  .pass { color: #0a7d22; font-weight: bold; }
+  .fail { color: #c1121f; font-weight: bold; }
+
+  footer {
+    position: fixed; left: 0; right: 0; bottom: 0; background: #fff3c4;
+    border-top: 3px solid #d4a017; padding: 12px 20px; font-size: 18px; font-weight: bold; text-align: center;
+  }
+  @media (max-width: 700px) { #cards { grid-template-columns: 1fr; } .card .num { font-size: 36px; } }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>응급실 공기 전파 비교 시뮬레이터</h1>
-  <span>2단계: 벽 · 문 · 기류 모드 · 히트맵</span>
-  <span id="engineMode" class="note" style="color:#d1d5db"></span>
+  <h1>응급실 공기 감염 위험 비교 시뮬레이터</h1>
+  <p>감염자 1명이 있을 때 환기 · 입구 분류 · 격리 · 이동식 후드가 위험을 얼마나 줄이는지 설계끼리 비교합니다.</p>
 </header>
-<div class="modebar">2차원 근사, 상대 비교용입니다. 공기 전파만 계산하며 실제 감염자 수를 예측하지 않습니다. 치수와 설비 위치는 가정값입니다.</div>
 
 <main>
   <section>
-    <h2>농도 히트맵 (3개 프리셋, 같은 색상 범위)</h2>
-    <div class="controls">
-      <button class="preset" data-k="0">프리셋 1: 기준 모델</button>
-      <button class="preset" data-k="1">프리셋 2: 설계안 2, 선별 실패</button>
-      <button class="preset" data-k="2">프리셋 3: 설계안 2, 선별 성공</button>
-    </div>
-    <div id="trustBanner" class="banner warn">계산과 검증 테스트를 준비하는 중입니다.</div>
-    <progress id="prog" value="0" max="1"></progress>
-    <div id="mapArea">
-      <div class="maps" id="maps"></div>
-      <div class="controls">
-        <label>시간 <b id="tLabel">240분</b>
-          <input type="range" id="tSlider" min="0" max="48" step="1" value="48"></label>
-        <label><input type="checkbox" id="logScale" checked> 색 눈금 로그(10배 간격)</label>
-        <label><input type="checkbox" id="arrows" checked> 기류 방향 화살표</label>
-      </div>
-      <canvas id="colorbar" height="60"></canvas>
-      <div class="controls">
-        <button class="sec" id="pngCompare">비교 히트맵 PNG 저장</button>
-        <button class="sec" id="pngDetail">크게 보기 PNG 저장</button>
-        <span class="note" id="pngNote"></span>
-      </div>
-      <h3 id="detailTitle">크게 보기</h3>
-      <canvas id="detail"></canvas>
-      <p class="note">범례: 검은 선 = 벽, 주황 선 = 열린 문, 초록 선 = 건물 입구(φ = 0), 파란 원(+) = 급기구, 회색 네모(−) = 배기구, 빨간 점 = 감염원, 회색 테두리 = 병상(기류를 막지 않음), 화살표 = 기류 방향(길이는 같게 그림).</p>
-    </div>
-  </section>
+    <h2>설계 고르기</h2>
+    <div class="inputs" id="inputs_main"></div>
 
-  <section id="resultArea">
-    <h2>구역별 평균 농도 (quanta/m³)</h2>
-    <div class="controls">
-      <label><input type="radio" name="zmode" value="avg" checked> 4시간 평균</label>
-      <label><input type="radio" name="zmode" value="now"> 슬라이더 시각</label>
-    </div>
-    <table id="zoneTable"></table>
-    <p class="note" id="isoNote"></p>
-    <h3>공기와 병원체 수지 (4시간, quanta)</h3>
-    <table id="balTable"></table>
+    <!-- 처음에는 접혀 있는 영역: 클릭하면 펼쳐짐 -->
+    <details>
+      <summary>인원 · 시간 바꾸기</summary>
+      <div class="inputs" id="inputs_people"></div>
+    </details>
+    <details>
+      <summary>가정값 바꾸기</summary>
+      <div class="inputs" id="inputs_assume"></div>
+      <p class="note">호흡량 p = 0.48 m³/h (고정)</p>
+    </details>
   </section>
 
   <section>
-    <h2>검증 테스트</h2>
-    <div class="controls"><button id="btnRun">다시 계산하고 검증하기</button></div>
-    <div id="testBanner" class="banner warn">아직 실행하지 않았습니다.</div>
-    <table id="testTable"></table>
+    <h2>프리셋</h2>
+    <div class="btns">
+      <b>두 구역 모델</b>
+      <button onclick="applyPreset('A')">A 기준</button>
+      <button onclick="applyPreset('B')">B 환기 2배</button>
+      <button onclick="applyPreset('C')">C 입구 분류</button>
+      <button onclick="applyPreset('D')">D 국소 배기</button>
+      <button onclick="applyPreset('E')">E 분류+국소 배기</button>
+      <button onclick="applyPreset('F')">F E+환기 2배</button>
+    </div>
+    <p class="note">프리셋은 인원(근거리 2명, 원거리 28명), 환기 횟수, 입구 분류, 후드 적용률만 바꿉니다. 선별 성공률 s와 가정값은 그대로이니, C·E·F는 s 슬라이더로 성공률을 정하세요.</p>
   </section>
 
-  <section class="two">
-    <div>
-      <h2>공통 입력값</h2>
-      <table id="inputTable"></table>
+  <section>
+    <h2>결과</h2>
+    <div id="warning"></div>
+    <div id="cards">
+      <div class="card"><div class="name">옆자리 감염 확률 P근</div><div class="num" id="outNear">—</div></div>
+      <div class="card"><div class="name">먼 자리 감염 확률 P원</div><div class="num" id="outFar">—</div></div>
+      <div class="card"><div class="name">전체 감염 확률 P<br><small>(인원수 가중 평균)</small></div><div class="num" id="outAll">—</div></div>
+      <div class="card"><div class="name">예상 2차 감염자 수 N</div><div class="num" id="outN">—</div></div>
     </div>
-    <div>
-      <h2>가정 목록</h2>
-      <ul id="assumeList"></ul>
-    </div>
+  </section>
+
+  <section>
+    <h2>그래프 1. 환기를 늘리면?</h2>
+    <canvas id="g1"></canvas>
+    <div class="legend" id="lg1"></div>
+  </section>
+
+  <section>
+    <h2>그래프 2. 감염자를 놓치면?</h2>
+    <canvas id="g2"></canvas>
+    <div class="legend" id="lg2"></div>
+    <p class="note">범례의 숫자는 각 선의 최댓값(가장 나쁜 경우)입니다. 분류를 쓰지 않는 A·B·D는 선별 성공률과 상관없어 수평선입니다.</p>
+  </section>
+
+  <section>
+    <h2>테스트</h2>
+    <button onclick="runTests()">테스트 실행</button>
+    <span class="note">슬라이더와 상관없이 정해진 값으로 계산합니다. 확률은 % 소수 첫째 자리, N은 소수 둘째 자리로 반올림한 값이 기댓값과 ±0.01 이내면 통과입니다.</span>
+    <div id="testResult"></div>
   </section>
 </main>
 
-<!-- ===================== 계산 코드 (Web Worker 안에서 실행) ===================== -->
-<script type="text/worker" id="worker-src">
-'use strict';
-/*
-  단위 규칙
-  길이 m, 부피 m³, 시간 s
-  유량: 입력 m³/h → 계산 m³/s
-  농도 C: quanta/m³
-  배출량 q: 입력 quanta/h → 계산 S = q/3600 quanta/s
-  φ(압력 비슷한 값): m²/s  (면 유량 F = k × H × (φ_a − φ_b), 단위 m³/s)
-*/
+<footer>공기 전파만 계산하는 단순 모델로 상대 비교용입니다. β, 선별 성공률, 누출률, 후드 포집률은 가정값입니다.</footer>
 
-// ---------- 공통 입력값 ----------
-const COMMON = {
-  Lx: 20, Ly: 15,       // 방 크기 [m]
-  H: 3,                 // 천장 높이 [m]
-  dx: 0.5,              // 칸 크기 [m]
-  q: 100,               // 배출량 [quanta/h]
-  D: 0.02,              // 확산 계수 [m²/s] (가정값)
-  lambdaPerH: 0,        // 침강+비활성화 [1/h]
-  tEnd: 4 * 3600,       // 시뮬레이션 시간 [s]
-  snapEvery: 300        // 히트맵 저장 간격 [s] (5분)
+<!-- ===================== 계산 부분 (모델) ===================== -->
+<script id="model">
+const p = 0.48; // 호흡량 (m³/h): 한 사람이 1시간에 들이마시는 공기 양
+
+// 한 경우의 계산
+// cc: 후드 포집률(0~1), tN: 근거리 사람이 노출되는 시간(h), tF: 원거리 사람이 노출되는 시간(h)
+// x: 입력값 묶음 (확률·비율은 0~1로 바꾼 값)
+function calc(cc, tN, tF, x) {
+  const G = x.q * (1 - cc);           // 공기 중으로 실제 퍼지는 배출량 (quanta/h) = 배출량 × (후드가 못 잡은 비율)
+  const Q = x.a * x.V;                // 환기량 (m³/h) = 환기 횟수(회/h) × 부피(m³)
+  const Cfar = G / Q;                 // 원거리 농도 (quanta/m³) = 배출량 ÷ 환기량
+  const Cnear = G / Q + G / x.beta;   // 근거리 농도 (quanta/m³) = 원거리 농도 + 감염자 주변에 더 쌓인 농도
+  const Pnear = 1 - Math.exp(-p * Cnear * tN); // 근거리 1명 감염 확률 (0~1), p×C×t = 들이마신 quanta 수
+  const Pfar  = 1 - Math.exp(-p * Cfar * tF);  // 원거리 1명 감염 확률 (0~1)
+  const N = x.nN * Pnear + x.nF * Pfar;        // 예상 2차 감염자 수 (명) = 인원 × 확률의 합
+  return { Pnear: Pnear, Pfar: Pfar, N: N };
+}
+
+// 두 결과를 비율 w : (1 − w)로 섞기 (P근, P원, N 모두 같은 방식)
+function mix(r1, r2, w) {
+  return {
+    Pnear: w * r1.Pnear + (1 - w) * r2.Pnear,
+    Pfar:  w * r1.Pfar  + (1 - w) * r2.Pfar,
+    N:     w * r1.N     + (1 - w) * r2.N
+  };
+}
+
+// 후드 포집률 cc일 때의 결과 (입구 분류 반영)
+function one(cc, x) {
+  const missed = calc(cc, x.T, x.T, x);                       // 놓쳤을 때: 모두 T시간 노출
+  if (!x.triage) return missed;                                // 분류를 안 쓰면 항상 놓친 경우
+  const found = calc(cc, x.tb, x.tb + x.f * (x.T - x.tb), x);  // 찾았을 때: 격리 전 tb시간 + 격리 후 새는 공기 f만큼
+  return mix(found, missed, x.s);                              // s 확률로 찾고, (1 − s) 확률로 놓침
+}
+
+// 최종 결과: 후드 적용률 h만큼은 후드 있음, 나머지는 후드 없음
+function model(x) {
+  return mix(one(x.c, x), one(0, x), x.h);
+}
+
+// 전체 감염 확률 P: P근과 P원을 인원수로 가중 평균 (0~1)
+// P = (nN × P근 + nF × P원) ÷ (nN + nF) = N ÷ 전체 인원
+function overallP(r, x) {
+  const people = x.nN + x.nF;        // 전체 인원 (명)
+  if (people === 0) return null;     // 사람이 없으면 계산할 수 없음
+  return (x.nN * r.Pnear + x.nF * r.Pfar) / people;
+}
+
+// 계산할 수 없는 입력이면 경고 문구, 괜찮으면 빈 문자열
+function checkInputs(x) {
+  if (!(x.V > 0)) return "공간 부피 V는 0보다 커야 합니다.";
+  if (!(x.beta > 0)) return "근거리 공기 교환량 β는 0보다 커야 합니다.";
+  if (x.triage && x.tb > x.T) return "격리까지 걸리는 시간 tb가 총 체류 시간 T보다 깁니다.";
+  return "";
+}
+
+// 설계 A~F (그래프 2, 프리셋, 테스트에서 함께 사용)
+const DESIGNS = {
+  A: { name: "A 기준",          a: 3, triage: false, h: 0 },
+  B: { name: "B 환기 2배",       a: 6, triage: false, h: 0 },
+  C: { name: "C 입구 분류",       a: 3, triage: true,  h: 0 },
+  D: { name: "D 국소 배기",       a: 3, triage: false, h: 1 },
+  E: { name: "E 분류+국소 배기",   a: 3, triage: true,  h: 1 },
+  F: { name: "F E+환기 2배",     a: 6, triage: true,  h: 1 }
 };
-const ISO_SUPPLY_RATIO = 0.8;   // 격리실 급기량 = 배기량 × 0.8 (가정값)
-const ISO_DOOR_W = 1.0;         // 격리실·전실 문 폭 [m] (가정값)
-const TRIAGE_EXHAUST_ACH = 6;   // 분류소·검사 배기 [1/h] (가정값)
 
-// ---------- 평면 만들기 ----------
-function emptyPlan(Lx, Ly, H, dx){
-  const nx = Math.round(Lx / dx), ny = Math.round(Ly / dx);
-  // kx[j*(nx+1)+i]: x = i·dx 에 있는 세로 면의 열림 정도 (0 = 벽, 1 = 완전히 열림)
-  // ky[j*nx+i]    : y = j·dx 에 있는 가로 면의 열림 정도
-  const kx = new Float64Array(ny * (nx + 1));
-  const ky = new Float64Array((ny + 1) * nx);
-  for (let j = 0; j < ny; j++) for (let i = 1; i < nx; i++) kx[j * (nx + 1) + i] = 1;  // 안쪽 면은 처음엔 열림
-  for (let j = 1; j < ny; j++) for (let i = 0; i < nx; i++) ky[j * nx + i] = 1;        // 바깥 테두리는 처음엔 막힘
-  return { Lx, Ly, H, dx, nx, ny, kx, ky, walls: [], doors: [], beds: [], vents: [], zones: [], defaultZone: '일반 진료 구역', src: null };
-}
-function overlap(a0, a1, b0, b1){ return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
+// 테스트 기본값 (비율은 0~1)
+const TEST_BASE = { q: 100, V: 900, beta: 600, tb: 1, T: 4, f: 0, c: 0.5,
+                    a: 3, nN: 0, nF: 30, triage: false, s: 0, h: 0 };
+const TWO = { nN: 2, nF: 28 };            // 두 구역 모델 인원
+const TRI = { nN: 0, nF: 30, a: 3, triage: true }; // 1차 모델 + 입구 분류
 
-// 벽: 선분이 지나는 면을 막는다 (k = 0)
-function wall(p, x0, y0, x1, y1){
-  p.walls.push([x0, y0, x1, y1]);
-  if (x0 === x1) {
-    const i = Math.round(x0 / p.dx);
-    for (let j = 0; j < p.ny; j++)
-      if (overlap(j * p.dx, (j + 1) * p.dx, Math.min(y0, y1), Math.max(y0, y1)) > 1e-9) p.kx[j * (p.nx + 1) + i] = 0;
-  } else {
-    const j = Math.round(y0 / p.dx);
-    for (let i = 0; i < p.nx; i++)
-      if (overlap(i * p.dx, (i + 1) * p.dx, Math.min(x0, x1), Math.max(x0, x1)) > 1e-9) p.ky[j * p.nx + i] = 0;
-  }
-}
-// 문·입구: 면과 겹친 길이 비율만큼 연다. 예) 0.3 m 겹치면 k = 0.3/0.5 = 0.6
-function door(p, x0, y0, x1, y1, kind){
-  p.doors.push({ seg: [x0, y0, x1, y1], kind: kind || 'door' });
-  if (x0 === x1) {
-    const i = Math.round(x0 / p.dx);
-    for (let j = 0; j < p.ny; j++) {
-      const o = overlap(j * p.dx, (j + 1) * p.dx, Math.min(y0, y1), Math.max(y0, y1));
-      if (o > 1e-9) { const n = j * (p.nx + 1) + i; p.kx[n] = Math.min(1, p.kx[n] + o / p.dx); }
-    }
-  } else {
-    const j = Math.round(y0 / p.dx);
-    for (let i = 0; i < p.nx; i++) {
-      const o = overlap(i * p.dx, (i + 1) * p.dx, Math.min(x0, x1), Math.max(x0, x1));
-      if (o > 1e-9) { const n = j * p.nx + i; p.ky[n] = Math.min(1, p.ky[n] + o / p.dx); }
-    }
-  }
-}
-function zone(p, name, x0, y0, x1, y1){ p.zones.push({ name, x0, y0, x1, y1 }); }
-// 칸 (i, j)가 속한 구역 이름: 목록에서 처음 맞는 사각형, 없으면 기본 구역
-function zoneNameOf(p, i, j){
-  const x = (i + 0.5) * p.dx, y = (j + 0.5) * p.dx;
-  for (const z of p.zones) if (x > z.x0 && x < z.x1 && y > z.y0 && y < z.y1) return z.name;
-  return p.defaultZone;
-}
-function zoneVolume(p, names){        // [m³]
-  let n = 0;
-  for (let j = 0; j < p.ny; j++) for (let i = 0; i < p.nx; i++) if (names.includes(zoneNameOf(p, i, j))) n++;
-  return n * p.dx * p.dx * p.H;
-}
-function vent(p, type, x, y, Qh){ p.vents.push({ type, x, y, Qh }); }   // Qh: 유량 [m³/h]
-
-// ---------- 프리셋 1: 평면 A ----------
-function planA(){
-  const c = COMMON, p = emptyPlan(c.Lx, c.Ly, c.H, c.dx);
-  const beds = [];
-  for (const x of [0.75, 3.25, 5.75, 8.25, 10.75, 13.25, 15.75, 18.25]) beds.push([x, 0.5]);
-  for (const x of [0.75, 3.25, 5.75, 13.25, 15.75, 18.25]) beds.push([x, 4]);
-  for (const x of [5.75, 13.25, 15.75, 18.25]) beds.push([x, 9]);
-  for (const x of [6.25, 8.75, 11.25, 13.75, 16.25, 18.75]) beds.push([x, 12.5]);
-  p.beds = beds;
-  zone(p, '격리실 1', 0, 7.5, 2.5, 11);
-  zone(p, '격리실 2', 2.5, 7.5, 5, 11);
-  zone(p, '접수·분류·대기', 0, 11, 5, 15);
-  zone(p, '스테이션', 8, 6.2, 12, 8.8);
-  // 벽 (먼저 막고, 그다음 문을 연다)
-  wall(p, 0, 7.5, 5, 7.5);
-  wall(p, 2.5, 7.5, 2.5, 11);
-  wall(p, 0, 11, 5, 11);
-  wall(p, 5, 7.5, 5, 12);
-  wall(p, 5, 14, 5, 15);
-  door(p, 0.9, 7.5, 1.6, 7.5);
-  door(p, 3.4, 7.5, 4.1, 7.5);
-  door(p, 2, 15, 3, 15, 'entrance');               // 건물 입구
-  // 환기 3회: Q = 3 × 900 = 2700 m³/h. 급기구 4개에 똑같이, 배기구 2개에 똑같이 나눔
-  const Q = 3 * zoneVolume(p, ['일반 진료 구역', '스테이션', '격리실 1', '격리실 2', '접수·분류·대기']);
-  for (const [x, y] of [[5, 3.2], [15, 3.2], [10, 11.7], [17, 7.5]]) vent(p, 'supply', x, y, Q / 4);
-  for (const [x, y] of [[3, 6.8], [12.7, 7.5]]) vent(p, 'exhaust', x, y, Q / 2);
-  p.src = { x: 5.75 + 0.5, y: 4 + 1 };               // 병상 (5.75, 4)의 중앙
-  p.title = '프리셋 1: 기준 모델';
-  p.sub = '평면 A, 환기 3회';
-  return p;
-}
-
-// ---------- 프리셋 2·3: 설계안 2 ----------
-function planD2(src, title, sub){
-  const c = COMMON, p = emptyPlan(c.Lx, c.Ly, c.H, c.dx);
-  const beds = [];
-  for (const x of [6.5, 9.5, 12.5, 15.5, 18.5]) beds.push([x, 0.5]);
-  for (const x of [6.5, 15.5, 18.5]) beds.push([x, 4.5]);
-  for (const x of [6.5, 15.5, 18.5]) beds.push([x, 8.5]);
-  for (const x of [9.5, 12.5]) beds.push([x, 12.5]);
-  beds.push([17.5, 12.3]);                          // 소생실 병상
-  p.beds = beds;
-  for (let r = 0; r < 4; r++) zone(p, '격리실 ' + (r + 1), 0, 3 * r, 3, 3 * r + 3);
-  zone(p, '전실', 3, 0, 4, 12);
-  zone(p, '오염 복도', 4, 0, 5.5, 12);
-  zone(p, '분류소', 0, 12, 3.2, 15);
-  zone(p, '검사', 3.2, 12, 5.5, 15);
-  zone(p, '소생실', 16, 11.5, 20, 15);
-  zone(p, '스테이션', 9, 5.5, 13, 8.5);
-  // 벽
-  wall(p, 3, 0, 3, 12);                             // 격리실 | 전실
-  wall(p, 4, 0, 4, 12);                             // 전실 | 오염 복도
-  for (const y of [3, 6, 9]) wall(p, 0, y, 4, y);   // 격리실끼리, 전실끼리
-  wall(p, 0, 12, 4, 12);                            // 격리실·전실 | 분류소
-  wall(p, 5.5, 0, 5.5, 15);                         // 경계 벽
-  wall(p, 16, 11.5, 16, 15);                        // 소생실 벽
-  wall(p, 16, 11.5, 20, 11.5);
-  // 문 (모두 열린 문)
-  for (let r = 0; r < 4; r++) {
-    const ym = 3 * r + 1.5;                         // 방의 중간 높이 [m]
-    door(p, 3, ym - ISO_DOOR_W / 2, 3, ym + ISO_DOOR_W / 2);
-    door(p, 4, ym - ISO_DOOR_W / 2, 4, ym + ISO_DOOR_W / 2);
-  }
-  door(p, 5.5, 3.2, 5.5, 3.8);                      // 착탈의 문
-  door(p, 5.5, 12.9, 5.5, 14.1);                    // 입구 2
-  door(p, 16, 12.7, 16, 13.4);                      // 소생실 문
-  door(p, 1.2, 15, 1.8, 15, 'entrance');            // 입구 1
-  door(p, 20, 13, 20, 14.5, 'entrance');            // 구급차 입구
-  // 일반 구역: 환기 6회, 급기 4개 똑같이, 배기 1개
-  const Qg = 6 * zoneVolume(p, ['일반 진료 구역', '스테이션']);
-  for (const [x, y] of [[11, 3.5], [17.5, 3.5], [14.3, 7.5], [8.6, 10.8]]) vent(p, 'supply', x, y, Qg / 4);
-  vent(p, 'exhaust', 19.6, 7.5, Qg);
-  // 소생실: 환기 6회, 급기 = 배기
-  const Qr = 6 * zoneVolume(p, ['소생실']);
-  vent(p, 'supply', 19.4, 12.1, Qr);
-  vent(p, 'exhaust', 18, 11.9, Qr);
-  // 격리실: 배기 = 12회 × 27 m³, 급기 = 배기 × 0.8 → 모자란 공기가 문으로 들어옴(음압 표현)
-  for (let r = 0; r < 4; r++) {
-    const ym = 3 * r + 1.5;
-    const Qe = 12 * zoneVolume(p, ['격리실 ' + (r + 1)]);
-    vent(p, 'exhaust', 0.3, ym, Qe);                // 환자 머리 쪽 (가정 위치)
-    vent(p, 'supply', 2.7, ym, Qe * ISO_SUPPLY_RATIO); // 문 쪽 (가정 위치)
-  }
-  // 분류소·검사: 배기만 (가정값)
-  vent(p, 'exhaust', 1.6, 13.5, TRIAGE_EXHAUST_ACH * zoneVolume(p, ['분류소']));
-  vent(p, 'exhaust', 4.35, 13.5, TRIAGE_EXHAUST_ACH * zoneVolume(p, ['검사']));
-  p.src = src;
-  p.title = title; p.sub = sub;
-  return p;
-}
-
-function buildPresets(){
-  return [
-    planA(),
-    planD2({ x: 6.5 + 0.5, y: 4.5 + 1 }, '프리셋 2: 설계안 2, 선별 실패', '감염원 일반 병상 (6.5, 4.5)'),
-    planD2({ x: 1.6, y: 10.5 }, '프리셋 3: 설계안 2, 선별 성공', '감염원 격리실 4 (1.6, 10.5)')
-  ];
-}
-
-// ---------- 이웃 정보 ----------
-// 칸마다 4방향(0 서, 1 동, 2 북(위), 3 남(아래))의 이웃 번호와 열림 정도
-// 이웃 번호 −1 = 건물 바깥 (입구일 때만 열림 k > 0)
-function neighbors(p){
-  const { nx, ny, kx, ky } = p, N = nx * ny;
-  const nb = new Int32Array(N * 4), kk = new Float64Array(N * 4);
-  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-    const c = j * nx + i;
-    nb[c * 4 + 0] = i > 0 ? c - 1 : -1;       kk[c * 4 + 0] = kx[j * (nx + 1) + i];
-    nb[c * 4 + 1] = i < nx - 1 ? c + 1 : -1;  kk[c * 4 + 1] = kx[j * (nx + 1) + i + 1];
-    nb[c * 4 + 2] = j > 0 ? c - nx : -1;      kk[c * 4 + 2] = ky[j * nx + i];
-    nb[c * 4 + 3] = j < ny - 1 ? c + nx : -1; kk[c * 4 + 3] = ky[(j + 1) * nx + i];
-  }
-  return { nb, kk };
-}
-
-// ---------- φ 풀기 (포아송 방정식) ----------
-// 각 칸에서: Σ(면) k·H·(φ_칸 − φ_이웃) = s_칸,  s = 급기 − 배기 [m³/s]
-// 건물 바깥(입구 너머)은 φ = 0으로 고정한다.
-// 방법: SOR(가우스-자이델을 조금 더 세게 반복). 잔차가 아주 작아질 때까지 반복.
-function solvePhi(p, nbr, s){
-  const N = p.nx * p.ny, H = p.H, { nb, kk } = nbr;
-  const phi = new Float64Array(N);
-  let sMax = 0; for (let c = 0; c < N; c++) sMax = Math.max(sMax, Math.abs(s[c]));
-  if (sMax === 0) return { phi, iter: 0, res: 0 };
-
-  // 출구 없는 구역 검사: 바깥과 이어지지 않은 구역은 급기와 배기가 같아야 한다.
-  const comp = new Int32Array(N).fill(-1);
-  for (let c0 = 0; c0 < N; c0++) {
-    if (comp[c0] >= 0) continue;
-    const stack = [c0]; comp[c0] = c0; let sum = 0, outside = false;
-    while (stack.length) {
-      const c = stack.pop(); sum += s[c];
-      for (let d = 0; d < 4; d++) {
-        if (kk[c * 4 + d] <= 0) continue;
-        const n = nb[c * 4 + d];
-        if (n < 0) { outside = true; continue; }
-        if (comp[n] < 0) { comp[n] = c0; stack.push(n); }
-      }
-    }
-    if (!outside && Math.abs(sum) > 1e-9 * sMax)
-      return { error: '출구가 없는 구역에 급기량과 배기량의 차이가 있습니다(' + (sum * 3600).toFixed(1) + ' m³/h).' };
-  }
-
-  const w = 1.9, tol = 1e-10 * sMax;   // 허용 잔차 [m³/s]
-  let res = Infinity, it = 0;
-  for (it = 1; it <= 200000; it++) {
-    for (let c = 0; c < N; c++) {
-      let sumG = 0, sumGphi = 0;
-      for (let d = 0; d < 4; d++) {
-        const g = kk[c * 4 + d] * H; if (g === 0) continue;   // g = k·H [m]
-        const n = nb[c * 4 + d];
-        sumG += g; if (n >= 0) sumGphi += g * phi[n];          // 바깥은 φ = 0
-      }
-      if (sumG === 0) continue;
-      const target = (s[c] + sumGphi) / sumG;
-      phi[c] += w * (target - phi[c]);
-    }
-    if (it % 25 === 0) {
-      res = 0;
-      for (let c = 0; c < N; c++) {
-        let out = 0;
-        for (let d = 0; d < 4; d++) {
-          const g = kk[c * 4 + d] * H; if (g === 0) continue;
-          const n = nb[c * 4 + d];
-          out += g * (phi[c] - (n >= 0 ? phi[n] : 0));
-        }
-        res = Math.max(res, Math.abs(s[c] - out));
-      }
-      if (res < tol) break;
-    }
-  }
-  if (res >= tol) return { error: 'φ 계산이 수렴하지 않았습니다(잔차 ' + res.toExponential(2) + ' m³/s).' };
-  return { phi, iter: it, res };
-}
-
-// ---------- 농도 계산 ----------
-// opt.mode: 'flow' (기류 모드) 또는 'mixed' (혼합 모드: 기류 없음, 환기를 제거율 ACH/3600으로)
-function simulate(p, opt, progress){
-  const { nx, ny, dx, H } = p, N = nx * ny;
-  const Vc = dx * dx * H;                         // 칸 부피 [m³]
-  const D = opt.D;                                // 확산 계수 [m²/s]
-  const lam = opt.lambdaPerH / 3600;              // λ [1/s]
-  const S = opt.q / 3600;                         // 배출률 [quanta/s]
-  const nbr = neighbors(p), { nb, kk } = nbr;
-
-  // 칸별 급기·배기 [m³/s]
-  const supply = new Float64Array(N), exhaust = new Float64Array(N);
-  const cellOf = (x, y) => Math.min(ny - 1, Math.max(0, Math.floor(y / dx))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(x / dx)));
-  if (opt.mode === 'flow') for (const v of p.vents) {
-    const c = cellOf(v.x, v.y);
-    if (v.type === 'supply') supply[c] += v.Qh / 3600; else exhaust[c] += v.Qh / 3600;
-  }
-  const remove = new Float64Array(N);             // 혼합 모드 환기 제거율 [1/s]
-  if (opt.mode === 'mixed') remove.fill(opt.ach / 3600);
-
-  // φ와 면 유량
-  let phiInfo = { iter: 0, res: 0 }, phi = new Float64Array(N);
-  if (opt.mode === 'flow') {
-    const s = new Float64Array(N);
-    for (let c = 0; c < N; c++) s[c] = supply[c] - exhaust[c];
-    const r = solvePhi(p, nbr, s);
-    if (r.error) return { error: r.error };
-    phi = r.phi; phiInfo = r;
-  }
-  // 면 목록: 칸 a에서 이웃 b(−1 = 바깥)로. 안쪽 면은 동·남 방향만 넣어 한 번씩만 센다.
-  const fa = [], fb = [], fF = [], fG = [];
-  for (let c = 0; c < N; c++) for (let d = 0; d < 4; d++) {
-    const k = kk[c * 4 + d]; if (k === 0) continue;
-    const n = nb[c * 4 + d];
-    if (n >= 0 && d !== 1 && d !== 3) continue;
-    fa.push(c); fb.push(n);
-    fF.push(k * H * (phi[c] - (n >= 0 ? phi[n] : 0)));  // 면 유량 F = −k(φ_b − φ_a)H [m³/s], a→b가 +
-    fG.push(D * H * k);                                  // 확산 계수 × 높이 × 열림 [m³/s]
-  }
-  const nF = fa.length;
-
-  // ---- dt [s] ----
-  // 안정 조건(요청): dt = min(0.2 dx²/D, 0.4 dx/u_max, 5초)
-  let uMax = 0; for (let f = 0; f < nF; f++) uMax = Math.max(uMax, Math.abs(fF[f]) / (dx * H)); // [m/s]
-  let dt = 5;
-  if (D > 0) dt = Math.min(dt, 0.2 * dx * dx / D);
-  if (uMax > 0) dt = Math.min(dt, 0.4 * dx / uMax);
-  // 추가 안전장치: 한 칸에서 한 번에 빠져나가는 양이 그 칸의 90%를 넘지 않게 (음수 방지)
-  const outCoef = new Float64Array(N);            // 칸에서 나가는 비율 계수 [m³/s]
-  for (let f = 0; f < nF; f++) {
-    const a = fa[f], b = fb[f];
-    outCoef[a] += fG[f]; if (b >= 0) outCoef[b] += fG[f];
-    if (fF[f] > 0) outCoef[a] += fF[f]; else if (b >= 0) outCoef[b] += -fF[f];
-  }
-  let coefMax = 0;
-  for (let c = 0; c < N; c++) coefMax = Math.max(coefMax, outCoef[c] + exhaust[c] + (remove[c] + lam) * Vc);
-  if (coefMax > 0) dt = Math.min(dt, 0.9 * Vc / coefMax);
-  dt *= (opt.dtScale || 1);
-  const nSteps = Math.max(1, Math.ceil(opt.tEnd / dt));
-  dt = opt.tEnd / nSteps;
-
-  // ---- 시작 ----
-  const srcIdx = (S > 0 && opt.src) ? cellOf(opt.src.x, opt.src.y) : -1;
-  let C = new Float64Array(N).fill(opt.C0 || 0);  // [quanta/m³]
-  let Cn = new Float64Array(N);                   // 다음 시각 농도 [quanta/m³]
-  const dQ = new Float64Array(N);                 // 칸으로 들어온 양 − 나간 양 [quanta/s]
-  const intC = new Float64Array(N);               // ∫C dt [quanta·s/m³]
-  const bal = { initial: (opt.C0 || 0) * N * Vc, emitted: 0, exhaustOut: 0, entranceOut: 0, ventOut: 0, lamOut: 0, inRoom: 0 };
-  let minC = opt.C0 || 0;
-  const snapEvery = opt.snapEvery || opt.tEnd;
-  const frames = [Float32Array.from(C)], times = [0];
-  let nextSnap = snapEvery;
-  const progEvery = Math.max(1, Math.floor(nSteps / 40));
-
-  for (let st = 0; st < nSteps; st++) {
-    dQ.fill(0);
-    // (1) 면을 지나는 양: 이류(풍상 차분) + 확산
-    for (let f = 0; f < nF; f++) {
-      const a = fa[f], b = fb[f], F = fF[f];
-      const Ca = C[a], Cb = b >= 0 ? C[b] : 0;     // 바깥 공기 농도 0
-      const adv = F > 0 ? F * Ca : F * Cb;         // 이류 플럭스 = F × (상류 칸의 C) [quanta/s]
-      const dif = fG[f] * (Ca - Cb);               // 확산 플럭스 = −D·H·(C_b − C_a) [quanta/s]
-      const flux = adv + dif;                      // a → b 방향이 +
-      dQ[a] -= flux;
-      if (b >= 0) dQ[b] += flux; else bal.entranceOut += flux * dt;
-    }
-    // (2) 칸 안에서: 배기, (혼합 모드) 환기 제거, λ, 배출. 급기 공기의 농도는 0이라 더할 것이 없다.
-    for (let c = 0; c < N; c++) {
-      const Cc = C[c];
-      const outEx = exhaust[c] * Cc;               // 배기 칸 유량 × C [quanta/s]
-      const outVent = remove[c] * Cc * Vc;         // 혼합 모드 환기 [quanta/s]
-      const outLam = lam * Cc * Vc;                // λ × C × V_c [quanta/s]
-      const src = c === srcIdx ? S : 0;            // [quanta/s]
-      intC[c] += Cc * dt;
-      bal.exhaustOut += outEx * dt; bal.ventOut += outVent * dt; bal.lamOut += outLam * dt;
-      // 칸의 변화량 = (들어온 양 − 나간 양 − 배기 − λCV_c + 배출) × dt / V_c
-      const v = Cc + (dQ[c] - outEx - outVent - outLam + src) * dt / Vc;
-      if (Number.isNaN(v) || v < -1e-12) {
-        const i = c % nx, j = Math.floor(c / nx);
-        return { error: (Number.isNaN(v) ? 'NaN' : '음수 농도') + ' 발생: ' + ((st * dt) / 60).toFixed(1) + '분, 칸 (' + i + ', ' + j + '). 계산을 멈췄습니다.' };
-      }
-      Cn[c] = v;
-      if (v < minC) minC = v;
-    }
-    if (srcIdx >= 0) bal.emitted += S * dt;
-    const tmp = C; C = Cn; Cn = tmp;               // 새 농도로 교체
-    const t = (st + 1) * dt;
-    if (t >= nextSnap - 1e-6) { frames.push(Float32Array.from(C)); times.push(t); nextSnap += snapEvery; }
-    if (progress && st % progEvery === 0) progress((st + 1) / nSteps);
-  }
-  for (let c = 0; c < N; c++) bal.inRoom += C[c] * Vc;
-
-  // 칸별 기류 속도 (화살표용) [m/s]
-  const ux = new Float32Array(N), uy = new Float32Array(N);
-  if (opt.mode === 'flow') for (let c = 0; c < N; c++) {
-    const flow = d => { const k = kk[c * 4 + d]; if (k === 0) return 0; const n = nb[c * 4 + d]; return k * H * (phi[c] - (n >= 0 ? phi[n] : 0)); };
-    ux[c] = (flow(1) - flow(0)) / 2 / (dx * H);    // 동쪽으로 나감(+), 서쪽으로 나감(−)
-    uy[c] = (flow(3) - flow(2)) / 2 / (dx * H);    // 아래쪽(+y)
-  }
-
-  // 구역별 통계
-  const zoneIdx = new Int32Array(N), zoneNames = [];
-  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-    const nm = zoneNameOf(p, i, j);
-    let z = zoneNames.indexOf(nm); if (z < 0) { zoneNames.push(nm); z = zoneNames.length - 1; }
-    zoneIdx[j * nx + i] = z;
-  }
-  const nZ = zoneNames.length, cnt = new Float64Array(nZ);
-  for (let c = 0; c < N; c++) cnt[zoneIdx[c]]++;
-  const zoneAvg = new Array(nZ).fill(0);          // 4시간 평균 [quanta/m³]
-  for (let c = 0; c < N; c++) zoneAvg[zoneIdx[c]] += intC[c] / opt.tEnd;
-  for (let z = 0; z < nZ; z++) zoneAvg[z] /= cnt[z];
-  let allAvg = 0; for (let c = 0; c < N; c++) allAvg += intC[c] / opt.tEnd; allAvg /= N;
-  const zoneFrames = frames.map(fr => {          // 시각별 구역 평균 [quanta/m³]
-    const m = new Array(nZ).fill(0); let all = 0;
-    for (let c = 0; c < N; c++) { m[zoneIdx[c]] += fr[c]; all += fr[c]; }
-    return { zones: m.map((v, z) => v / cnt[z]), all: all / N };
-  });
-  // 구역으로 다른 구역에서 들어오는 공기의 순유량 [m³/h]
-  const zoneInflow = new Array(nZ).fill(0);
-  for (let f = 0; f < nF; f++) {
-    const a = fa[f], b = fb[f]; if (b < 0) continue;
-    if (zoneIdx[a] === zoneIdx[b]) continue;
-    zoneInflow[zoneIdx[b]] += fF[f] * 3600; zoneInflow[zoneIdx[a]] -= fF[f] * 3600;
-  }
-
-  return { dt, nSteps, uMax, phiIter: phiInfo.iter, phiRes: phiInfo.res, minC, bal,
-           frames, times, ux, uy, zoneNames, zoneAvg, allAvg, zoneFrames, zoneInflow, srcIdx, nx, ny };
-}
-
-// ---------- 전체 실행: 프리셋 3개 + 검증 테스트 ----------
-function runAll(post){
-  const presets = buildPresets();
-  const base = { mode: 'flow', q: COMMON.q, D: COMMON.D, lambdaPerH: COMMON.lambdaPerH, tEnd: COMMON.tEnd, snapEvery: COMMON.snapEvery, C0: 0 };
-  const total = 9; let done = 0;
-  const prog = label => f => post({ type: 'progress', f: (done + f) / total, label });
-  const results = [];
-  for (let k = 0; k < 3; k++) {
-    const r = simulate(presets[k], Object.assign({}, base, { src: presets[k].src }), prog(presets[k].title));
-    results.push(r); done++;
-  }
-  const tests = [];
-  // ----- 테스트 1~3: 빈 방, 혼합 모드 (1단계와 같은 조건) -----
-  const room = () => emptyPlan(20, 15, 3, 0.5);
-  {
-    const r = simulate(room(), { mode: 'mixed', ach: 6, D: 0.02, q: 0, lambdaPerH: 0, C0: 1, tEnd: 1800 }, prog('테스트 1')); done++;
-    const exp = Math.exp(-3), got = r.error ? NaN : r.bal.inRoom / 900;   // 평균 농도 = 총량 / 900 m³
-    const err = Math.abs(got - exp) / exp;
-    tests.push({ id: 1, cond: '빈 방, 혼합 모드, 배출 없음, ACH 6, 30분, C₀ = 1', expect: exp.toFixed(5) + ' quanta/m³', got: r.error || got.toFixed(5) + ' quanta/m³', err, tol: 0.02, pass: !r.error && err <= 0.02 });
-  }
-  {
-    const p = 0.5, q = 50, a = 3, V = 900, tH = 4;    // [m³/h], [quanta/h], [1/h], [m³], [h]
-    const r = simulate(room(), { mode: 'mixed', ach: a, D: 0.5, q, lambdaPerH: 0, C0: 0, tEnd: tH * 3600, src: { x: 10, y: 7.5 } }, prog('테스트 2')); done++;
-    // 기대값: P = 1 − exp[−(pq/(aV))(t − (1 − e^(−at))/a)]
-    const Pexp = 1 - Math.exp(-(p * q / (a * V)) * (tH - (1 - Math.exp(-a * tH)) / a));
-    let got = NaN;
-    if (!r.error) {
-      const meanInt = r.allAvg * tH * 3600;              // ∫C̄ dt = (시간 평균 C̄) × 시간 [quanta·s/m³]
-      got = 1 - Math.exp(-(p / 3600) * meanInt);         // 흡입량 = p[m³/s] × ∫C̄ dt
-    }
-    const err = Math.abs(got - Pexp) / Pexp;
-    tests.push({ id: 2, cond: '빈 방, 혼합 모드, D = 0.5, q = 50, ACH 3, 900 m³, p = 0.5, 4시간 (정상 상태 식 3.64%와는 비교하지 않음)', expect: (Pexp * 100).toFixed(3) + ' %', got: r.error || (got * 100).toFixed(3) + ' %', err, tol: 0.02, pass: !r.error && err <= 0.02 });
-  }
-  {
-    const r = simulate(room(), { mode: 'mixed', ach: 0, D: 0.02, q: 50, lambdaPerH: 0, C0: 0, tEnd: 3600, src: { x: 10, y: 7.5 } }, prog('테스트 3')); done++;
-    const got = r.error ? NaN : r.bal.inRoom, err = Math.abs(got - 50) / 50;
-    tests.push({ id: 3, cond: '빈 방, 환기·제거 없음, q = 50, 1시간', expect: '50 quanta', got: r.error || got.toFixed(4) + ' quanta', err, tol: 0.01, pass: !r.error && err <= 0.01 });
-  }
-  // ----- 테스트 4: 기류 모드 수지 (프리셋 1~3 각각) -----
-  {
-    let worst = 0, txt = [], ok = true;
-    for (let k = 0; k < 3; k++) {
-      const r = results[k];
-      if (r.error) { ok = false; txt.push('P' + (k + 1) + ' 오류'); continue; }
-      const b = r.bal, inn = b.initial + b.emitted, out = b.inRoom + b.exhaustOut + b.entranceOut + b.lamOut;
-      const e = Math.abs(inn - out) / inn; worst = Math.max(worst, e);
-      txt.push('P' + (k + 1) + ': ' + inn.toFixed(2) + ' = ' + out.toFixed(2));
-    }
-    tests.push({ id: 4, cond: '기류 모드, 프리셋 1~3, 4시간: 배출한 총량 = 공간 안 + 배기 + 입구', expect: '좌변 = 우변', got: txt.join('<br>'), err: worst, tol: 0.01, pass: ok && worst <= 0.01 });
-  }
-  // ----- 테스트 5: dt 절반 (프리셋 2) -----
-  {
-    const r2 = simulate(presets[1], Object.assign({}, base, { src: presets[1].src, dtScale: 0.5 }), prog('테스트 5')); done++;
-    const r1 = results[1];
-    let worst = 0, where = '';
-    if (!r1.error && !r2.error) {
-      // 5분마다의 구역 평균 농도를 모두 비교한다 (농도가 올라가는 처음 구간 포함)
-      r1.zoneFrames.forEach((f1, n) => {
-        if (n === 0) return;                                // 0분은 둘 다 0
-        const f2 = r2.zoneFrames[n], vmax = Math.max(...f1.zones);
-        f1.zones.forEach((v, z) => {
-          if (v < 1e-3 * vmax) return;                      // 아주 작은 값은 비율 비교에서 뺌
-          const e = Math.abs(f2.zones[z] - v) / v;
-          if (e > worst) { worst = e; where = r1.zoneNames[z] + ', ' + (r1.times[n] / 60).toFixed(0) + '분'; }
-        });
-      });
-    }
-    tests.push({ id: 5, cond: '프리셋 2에서 dt를 절반으로: 5분마다의 구역별 평균 농도 비교 (N은 계산하지 않으므로 N 대신 사용)', expect: '변화 5% 이내',
-      got: (r1.error || r2.error) ? '오류' : 'dt ' + r1.dt.toFixed(3) + ' s → ' + r2.dt.toFixed(3) + ' s<br>가장 큰 변화: ' + where, err: worst, tol: 0.05, pass: !r1.error && !r2.error && worst <= 0.05 });
-  }
-  // ----- 테스트 7: 벽 누출 없음, 음수 없음 -----
-  {
-    const p = room();
-    wall(p, 12, 3, 18, 3); wall(p, 12, 9, 18, 9); wall(p, 12, 3, 12, 9); wall(p, 18, 3, 18, 9);   // 문 없는 닫힌 방
-    door(p, 0, 7, 0, 8, 'entrance');
-    vent(p, 'supply', 3, 3, 900); vent(p, 'exhaust', 8, 12, 900);
-    const r = simulate(p, { mode: 'flow', D: 0.02, q: 100, lambdaPerH: 0, C0: 0, tEnd: 3600, src: { x: 11.75, y: 6 } }, prog('테스트 7')); done++;
-    let inside = 0;
-    if (!r.error) for (let j = 0; j < p.ny; j++) for (let i = 0; i < p.nx; i++) {
-      const x = (i + 0.5) * p.dx, y = (j + 0.5) * p.dx;
-      if (x > 12 && x < 18 && y > 3 && y < 9) inside = Math.max(inside, r.frames[r.frames.length - 1][j * p.nx + i]);
-    }
-    const mins = results.map(rr => rr.error ? NaN : rr.minC);
-    const noNeg = mins.every(m => m >= 0);
-    tests.push({ id: 7, cond: '감염원을 닫힌 방 벽 바로 옆에 두고 1시간: 닫힌 방 안 최고 농도 / 프리셋 1~3의 최소 농도', expect: '닫힌 방 안 0, 최소 농도 ≥ 0',
-      got: r.error ? r.error : '닫힌 방 안 최고 ' + inside.toExponential(2) + ' quanta/m³<br>최소 농도 ' + mins.map(m => Number.isNaN(m) ? '오류' : m.toExponential(1)).join(', '),
-      err: NaN, tol: NaN, pass: !r.error && inside === 0 && noNeg });
-  }
-  post({ type: 'progress', f: 1, label: '완료' });
-  // 화면으로 보낼 결과 (평면 정보 포함)
-  return { presets: presets.map(p => ({ title: p.title, sub: p.sub, nx: p.nx, ny: p.ny, dx: p.dx, Lx: p.Lx, Ly: p.Ly, walls: p.walls, doors: p.doors, beds: p.beds, vents: p.vents, zones: p.zones, src: p.src })),
-           results, tests, common: COMMON, assume: { ISO_SUPPLY_RATIO, ISO_DOOR_W, TRIAGE_EXHAUST_ACH } };
-}
-
-self.onmessage = function(e){
-  try {
-    if (e.data.type === 'runAll') {
-      const out = runAll(m => self.postMessage(Object.assign({ id: e.data.id }, m)));
-      self.postMessage({ type: 'done', id: e.data.id, out });
-    }
-  } catch (err) {
-    self.postMessage({ type: 'error', id: e.data.id, message: String(err && err.message || err) });
-  }
+// 1차 모델 ①~⑤ (근거리 0명, 분류 끄기, 후드 0%): 테스트에서만 사용
+const FIRST_ORDER = {
+  "①": { nN: 0, nF: 30, a: 3, T: 4, triage: false, h: 0 },
+  "②": { nN: 0, nF: 30, a: 6, T: 4, triage: false, h: 0 },
+  "③": { nN: 0, nF: 30, a: 3, T: 2, triage: false, h: 0 },
+  "④": { nN: 0, nF: 15, a: 3, T: 4, triage: false, h: 0 },
+  "⑤": { nN: 0, nF: 15, a: 6, T: 2, triage: false, h: 0 }
 };
+
+// 테스트 목록: key는 확인할 값, exp는 기댓값 (확률은 %)
+const TESTS = [
+  { no: "1",  desc: "1차 ① 환기 3",                set: FIRST_ORDER["①"], key: "Pfar", exp: 6.9 },
+  { no: "1",  desc: "1차 ① 환기 3",                set: FIRST_ORDER["①"], key: "N", exp: 2.06 },
+  { no: "2",  desc: "1차 ② 환기 6",                set: FIRST_ORDER["②"], key: "N", exp: 1.05 },
+  { no: "3",  desc: "1차 ③ 환기 3, T 2",            set: FIRST_ORDER["③"], key: "N", exp: 1.05 },
+  { no: "4",  desc: "1차 ④ 환기 3, nF 15",          set: FIRST_ORDER["④"], key: "N", exp: 1.03 },
+  { no: "5",  desc: "1차 ⑤ 환기 6, T 2, nF 15",     set: FIRST_ORDER["⑤"], key: "N", exp: 0.26 },
+  { no: "6",  desc: "1차+분류, s 30%",         set: Object.assign({}, TRI, { s: 0.3 }), key: "N", exp: 1.60 },
+  { no: "6",  desc: "1차+분류, s 90%",         set: Object.assign({}, TRI, { s: 0.9 }), key: "N", exp: 0.68 },
+  { no: "6",  desc: "1차+분류, s 100%",        set: Object.assign({}, TRI, { s: 1 }), key: "N", exp: 0.53 },
+  { no: "7",  desc: "1차+분류, s 100%, f 50%",  set: Object.assign({}, TRI, { s: 1, f: 0.5 }), key: "N", exp: 1.30 },
+  { no: "7",  desc: "1차+분류, s 100%, f 100%", set: Object.assign({}, TRI, { s: 1, f: 1 }), key: "N", exp: 2.06 },
+  { no: "8",  desc: "두 구역 A",              set: Object.assign({}, TWO, DESIGNS.A), key: "Pnear", exp: 32.4 },
+  { no: "8",  desc: "두 구역 A",              set: Object.assign({}, TWO, DESIGNS.A), key: "Pfar", exp: 6.9 },
+  { no: "8",  desc: "두 구역 A",              set: Object.assign({}, TWO, DESIGNS.A), key: "N", exp: 2.57 },
+  { no: "9",  desc: "두 구역, 환기 24, 분류 끄기", set: Object.assign({}, TWO, { a: 24, triage: false, h: 0 }), key: "Pnear", exp: 28.0 },
+  { no: "10", desc: "두 구역 B",              set: Object.assign({}, TWO, DESIGNS.B), key: "N", exp: 1.58 },
+  { no: "11", desc: "두 구역 D",              set: Object.assign({}, TWO, DESIGNS.D), key: "Pnear", exp: 17.8 },
+  { no: "11", desc: "두 구역 D",              set: Object.assign({}, TWO, DESIGNS.D), key: "N", exp: 1.33 },
+  { no: "12", desc: "두 구역 C, s 90%",        set: Object.assign({}, TWO, DESIGNS.C, { s: 0.9 }), key: "N", exp: 0.87 },
+  { no: "13", desc: "두 구역 E, s 90%",        set: Object.assign({}, TWO, DESIGNS.E, { s: 0.9 }), key: "N", exp: 0.44 },
+  { no: "14", desc: "두 구역 F, s 90%",        set: Object.assign({}, TWO, DESIGNS.F, { s: 0.9 }), key: "N", exp: 0.27 },
+  { no: "15", desc: "두 구역, 환기 3, h 50%",   set: Object.assign({}, TWO, { a: 3, triage: false, h: 0.5 }), key: "Pnear", exp: 25.1 },
+  { no: "15", desc: "두 구역, 환기 3, h 80%",   set: Object.assign({}, TWO, { a: 3, triage: false, h: 0.8 }), key: "Pnear", exp: 20.7 }
+];
+
+// 테스트 하나 계산: 통과 여부와 값을 돌려줌
+function runOneTest(t) {
+  const x = Object.assign({}, TEST_BASE, t.set);
+  const r = model(x);
+  const isProb = (t.key !== "N");
+  const raw = isProb ? r[t.key] * 100 : r[t.key];          // 확률은 %로 바꿈
+  const digits = isProb ? 1 : 2;                            // 표시 자릿수
+  const rounded = Number(raw.toFixed(digits));              // 기댓값과 같은 자릿수로 반올림
+  const pass = Math.abs(rounded - t.exp) <= 0.01 + 1e-9;    // 오차 ±0.01 (컴퓨터 계산 오차 여유 1e-9)
+  return { raw: raw, rounded: rounded, pass: pass, isProb: isProb };
+}
 </script>
 
-<!-- ===================== 화면 코드 (메인 스레드) ===================== -->
+<!-- ===================== 화면 부분 ===================== -->
 <script>
-'use strict';
-const $ = id => document.getElementById(id);
-let DATA = null;           // 계산 결과
-let sel = 0;               // 크게 보기 프리셋 번호
-let trusted = false;
+// 입력 칸 목록: 슬라이더의 최소·최대·간격·시작값 (비율은 % 단위로 표시)
+// group: main = 위쪽에 늘 보임, people = "인원 · 시간 바꾸기", assume = "가정값 바꾸기"
+const INPUTS = [
+  { id: "a",      group: "main",   label: "시간당 환기 횟수 a",            unit: "회/h",     min: 1,   max: 24,   step: 1,   start: 3 },
+  { id: "triage", group: "main",   label: "입구 분류 사용",                type: "check",                              start: false },
+  { id: "s",      group: "main",   label: "선별 성공률 s (가정값)",         unit: "%",        min: 0,   max: 100,  step: 5,   start: 0 },
+  { id: "h",      group: "main",   label: "후드 적용률 h",                unit: "%",        min: 0,   max: 100,  step: 5,   start: 0 },
+  { id: "nN",     group: "people", label: "근거리 인원 nN",               unit: "명",       min: 0,   max: 6,    step: 1,   start: 2 },
+  { id: "nF",     group: "people", label: "원거리 인원 nF",               unit: "명",       min: 0,   max: 50,   step: 1,   start: 28 },
+  { id: "tb",     group: "people", label: "격리까지 걸리는 시간 tb",        unit: "시간",      min: 0.5, max: 8,    step: 0.5, start: 1 },
+  { id: "T",      group: "people", label: "총 체류 시간 T",               unit: "시간",      min: 0.5, max: 8,    step: 0.5, start: 4 },
+  { id: "beta",   group: "assume", label: "근거리 공기 교환량 β (가정값)",   unit: "m³/h",     min: 100, max: 2000, step: 50,  start: 600 },
+  { id: "q",      group: "assume", label: "배출량 q",                    unit: "quanta/h", min: 10,  max: 600,  step: 10,  start: 100 },
+  { id: "V",      group: "assume", label: "공간 부피 V",                 unit: "m³",       type: "number",             start: 900 },
+  { id: "f",      group: "assume", label: "격리실 공기 누출률 f (가정값)",   unit: "%",        min: 0,   max: 100,  step: 5,   start: 0 },
+  { id: "c",      group: "assume", label: "후드 포집률 c (가정값)",         unit: "%",        min: 0,   max: 90,   step: 5,   start: 50 }
+];
 
-// ---------- 계산 엔진 (Web Worker, 안 되면 메인 스레드) ----------
-let engine = null, msgId = 0, pending = null;
-function startEngine(){
-  const src = $('worker-src').textContent;
-  try {
-    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
-    const w = new Worker(url);
-    w.onmessage = e => onMsg(e.data);
-    w.onerror = ev => { if (ev.preventDefault) ev.preventDefault(); fallback(); };
-    engine = m => w.postMessage(m);
-    $('engineMode').textContent = '계산: Web Worker';
-  } catch (e) { fallback(); }
-}
-function fallback(){
-  const fake = { postMessage: d => onMsg(d) };
-  new Function('self', $('worker-src').textContent)(fake);
-  engine = m => setTimeout(() => fake.onmessage({ data: m }), 30);
-  $('engineMode').textContent = '계산: 메인 스레드(Web Worker 사용 불가)';
-  if (pending) engine(pending);
-}
-function runAll(){
-  trusted = false; DATA = null;
-  setBanner('run', '계산과 검증 테스트를 실행하는 중입니다…');
-  $('btnRun').disabled = true; $('prog').value = 0;
-  pending = { type: 'runAll', id: ++msgId };
-  engine(pending);
-}
-function onMsg(d){
-  if (d.id !== msgId) return;
-  if (d.type === 'progress') { $('prog').value = d.f; setBanner('run', '실행 중: ' + d.label + ' (' + Math.round(d.f * 100) + '%)'); return; }
-  $('btnRun').disabled = false;
-  if (d.type === 'error') { setBanner('fail', '⚠ 계산 오류: ' + d.message); return; }
-  DATA = d.out;
-  const runErr = DATA.results.map((r, k) => r.error ? DATA.presets[k].title + ': ' + r.error : null).filter(Boolean);
-  const allPass = DATA.tests.every(t => t.pass);
-  trusted = allPass && runErr.length === 0;
-  if (runErr.length) setBanner('fail', '⚠ ' + runErr.join(' / '));
-  else if (!allPass) setBanner('fail', '⚠ 검증 테스트 실패: ' + DATA.tests.filter(t => !t.pass).map(t => t.id).join(', ') + '번. 아래 결과를 믿지 마세요.');
-  else setBanner('ok', '✔ 검증 테스트 1, 2, 3, 4, 5, 7 통과. 상대 비교용으로 볼 수 있습니다.');
-  $('mapArea').classList.toggle('untrusted', !trusted);
-  $('resultArea').classList.toggle('untrusted', !trusted);
-  computeScale();
-  buildMaps(); drawAll(); showTests(); showInputs(); showZoneTable(); showBalance();
-}
-function setBanner(cls, txt){ const b = $('trustBanner'); b.className = 'banner ' + cls; b.textContent = txt; }
-
-// ---------- 색 ----------
-// 노랑 → 주황 → 빨강 → 진한 자주 (값이 클수록 진함)
-const STOPS = [[255, 251, 230], [254, 217, 118], [253, 141, 60], [227, 26, 28], [128, 0, 38]];
-function colorAt(t){
-  t = Math.max(0, Math.min(1, t));
-  const x = t * (STOPS.length - 1), i = Math.min(STOPS.length - 2, Math.floor(x)), f = x - i;
-  const a = STOPS[i], b = STOPS[i + 1];
-  return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * f) + ',' + Math.round(a[1] + (b[1] - a[1]) * f) + ',' + Math.round(a[2] + (b[2] - a[2]) * f) + ')';
-}
-let VMAX = 1;                // 3개 프리셋, 모든 시각을 통틀어 가장 큰 농도 [quanta/m³]
-const DECADES = 3;           // 로그 눈금 범위: VMAX/1000 ~ VMAX
-function computeScale(){
-  VMAX = 0;
-  for (const r of DATA.results) if (!r.error) for (const fr of r.frames) for (const v of fr) if (v > VMAX) VMAX = v;
-  if (!(VMAX > 0)) VMAX = 1;
-}
-function valueToT(v){
-  if ($('logScale').checked) {
-    if (!(v > 0)) return 0;
-    return (Math.log10(v) - (Math.log10(VMAX) - DECADES)) / DECADES;
-  }
-  return v / VMAX;
-}
-
-// ---------- 평면 + 히트맵 그리기 ----------
-// g: 2D 컨텍스트, ox, oy: 왼쪽 위 픽셀, sc: 1 m당 픽셀
-function drawPlan(g, ox, oy, sc, k, frameIdx, detail){
-  const P = DATA.presets[k], R = DATA.results[k];
-  const X = x => ox + x * sc, Y = y => oy + y * sc;
-  g.fillStyle = '#fff'; g.fillRect(ox, oy, P.Lx * sc, P.Ly * sc);
-  if (!R.error) {
-    const fr = R.frames[Math.min(frameIdx, R.frames.length - 1)];
-    for (let j = 0; j < P.ny; j++) for (let i = 0; i < P.nx; i++) {
-      g.fillStyle = colorAt(valueToT(fr[j * P.nx + i]));
-      g.fillRect(X(i * P.dx), Y(j * P.dx), P.dx * sc + 0.6, P.dx * sc + 0.6);
+// 입력 칸을 화면에 만들기
+function buildInputs() {
+  INPUTS.forEach(function (it) {
+    const box = document.getElementById("inputs_" + it.group); // 들어갈 영역
+    const row = document.createElement("div");
+    row.className = "row";
+    let html = '<label for="in_' + it.id + '">' + it.label + '</label><div class="line">';
+    if (it.type === "number") {
+      html += '<input type="number" id="in_' + it.id + '" value="' + it.start + '"> <span>' + it.unit + '</span>';
+    } else if (it.type === "check") {
+      html += '<input type="checkbox" id="in_' + it.id + '"' + (it.start ? " checked" : "") + '> <span class="val" id="v_' + it.id + '"></span>';
+    } else {
+      html += '<input type="range" id="in_' + it.id + '" min="' + it.min + '" max="' + it.max +
+              '" step="' + it.step + '" value="' + it.start + '"><span class="val" id="v_' + it.id + '"></span>';
     }
-  }
-  // 구역 이름 (크게 보기에서만)
-  if (detail) {
-    g.font = 'bold ' + Math.max(11, sc * 0.42) + 'px sans-serif'; g.textAlign = 'center';
-    for (const z of P.zones) {
-      const cx = X((z.x0 + z.x1) / 2), cy = Y((z.y0 + z.y1) / 2);
-      g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.strokeText(z.name, cx, cy);
-      g.fillStyle = '#1e3a8a'; g.fillText(z.name, cx, cy);
-    }
-  }
-  // 병상 (기류를 막지 않음)
-  g.lineWidth = 1; g.strokeStyle = '#6b7280';
-  for (const [bx, by] of P.beds) g.strokeRect(X(bx), Y(by), sc * 1, sc * 2);
-  // 기류 화살표 (1 m마다, 방향만)
-  if ($('arrows').checked && !R.error) {
-    g.strokeStyle = 'rgba(30,58,138,.75)'; g.fillStyle = 'rgba(30,58,138,.75)'; g.lineWidth = Math.max(1, sc * 0.05);
-    const step = Math.round(1 / P.dx);
-    for (let j = 1; j < P.ny; j += step) for (let i = 1; i < P.nx; i += step) {
-      const c = j * P.nx + i, u = R.ux[c], v = R.uy[c], m = Math.hypot(u, v);
-      if (m < 1e-4) continue;                     // 0.1 mm/s보다 느리면 그리지 않음
-      const L = 0.35 * sc, cx = X((i + 0.5) * P.dx), cy = Y((j + 0.5) * P.dx);
-      const ex = cx + u / m * L, ey = cy + v / m * L, sx = cx - u / m * L, sy = cy - v / m * L;
-      g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
-      const a = Math.atan2(v, u), h = L * 0.6;
-      g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex - h * Math.cos(a - 0.5), ey - h * Math.sin(a - 0.5)); g.lineTo(ex - h * Math.cos(a + 0.5), ey - h * Math.sin(a + 0.5)); g.closePath(); g.fill();
-    }
-  }
-  // 바깥 벽과 안쪽 벽
-  g.strokeStyle = '#111827'; g.lineWidth = Math.max(2, sc * 0.15); g.lineCap = 'butt';
-  g.strokeRect(X(0), Y(0), P.Lx * sc, P.Ly * sc);
-  for (const [x0, y0, x1, y1] of P.walls) { g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke(); }
-  // 문과 입구: 벽을 지우고 색 선으로 표시
-  for (const d of P.doors) {
-    const [x0, y0, x1, y1] = d.seg;
-    g.strokeStyle = '#fff'; g.lineWidth = Math.max(3, sc * 0.2);
-    g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
-    g.strokeStyle = d.kind === 'entrance' ? '#16a34a' : '#ea580c'; g.lineWidth = Math.max(2, sc * 0.12);
-    g.beginPath(); g.moveTo(X(x0), Y(y0)); g.lineTo(X(x1), Y(y1)); g.stroke();
-  }
-  // 급기구·배기구
-  const r = Math.max(4, sc * 0.22);
-  for (const v of P.vents) {
-    const cx = X(v.x), cy = Y(v.y);
-    if (v.type === 'supply') { g.fillStyle = '#2563eb'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); }
-    else { g.fillStyle = '#374151'; g.fillRect(cx - r, cy - r, 2 * r, 2 * r); }
-    g.fillStyle = '#fff'; g.font = 'bold ' + Math.round(r * 1.6) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(v.type === 'supply' ? '+' : '−', cx, cy + 0.5);
-    g.textBaseline = 'alphabetic';
-  }
-  // 감염원
-  g.fillStyle = '#dc2626'; g.strokeStyle = '#000'; g.lineWidth = 2;
-  g.beginPath(); g.arc(X(P.src.x), Y(P.src.y), Math.max(5, sc * 0.3), 0, 7); g.fill(); g.stroke();
-  if (R.error) { g.fillStyle = '#b91c1c'; g.font = 'bold 16px sans-serif'; g.textAlign = 'center'; g.fillText('계산 오류', X(P.Lx / 2), Y(P.Ly / 2)); }
-}
-
-function setupCanvas(cv, cssW, cssH){
-  const dpr = window.devicePixelRatio || 1;
-  cv.style.height = cssH + 'px'; cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
-  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return g;
-}
-function buildMaps(){
-  const box = $('maps'); box.innerHTML = '';
-  DATA.presets.forEach((P, k) => {
-    const d = document.createElement('div'); d.className = 'mapbox' + (k === sel ? ' sel' : '');
-    d.innerHTML = '<h4>' + P.title + '</h4><div class="note">' + P.sub + '</div>';
-    const cv = document.createElement('canvas'); cv.id = 'map' + k; d.appendChild(cv);
-    d.onclick = () => select(k);
-    box.appendChild(d);
+    html += "</div>";
+    row.innerHTML = html;
+    box.appendChild(row);
+    document.getElementById("in_" + it.id).addEventListener("input", update);
   });
 }
-function frameIdx(){ return parseInt($('tSlider').value, 10); }
-function drawAll(){
-  if (!DATA) return;
-  const fi = frameIdx();
-  $('tLabel').textContent = (fi * 5) + '분';
-  DATA.presets.forEach((P, k) => {
-    const cv = $('map' + k); if (!cv) return;
-    const w = cv.parentElement.clientWidth - 8, pad = 4, sc = (w - 2 * pad) / P.Lx;
-    const g = setupCanvas(cv, w, P.Ly * sc + 2 * pad);
-    drawPlan(g, pad, pad, sc, k, fi, false);
-  });
-  const cv = $('detail'), w = cv.parentElement.clientWidth - 30, pad = 10;
-  const sc = Math.min((w - 2 * pad) / DATA.presets[sel].Lx, 46);
-  const g = setupCanvas(cv, DATA.presets[sel].Lx * sc + 2 * pad, DATA.presets[sel].Ly * sc + 2 * pad);
-  cv.style.width = (DATA.presets[sel].Lx * sc + 2 * pad) + 'px';
-  drawPlan(g, pad, pad, sc, sel, fi, true);
-  $('detailTitle').textContent = '크게 보기: ' + DATA.presets[sel].title + ' (' + DATA.presets[sel].sub + '), t = ' + (fi * 5) + '분';
-  drawColorbar($('colorbar'), $('colorbar').parentElement.clientWidth - 30);
-  if (document.querySelector('input[name=zmode]:checked').value === 'now') showZoneTable();
-}
-function colorbarLabels(){
-  if ($('logScale').checked) { const out = []; for (let e = 0; e <= DECADES; e++) out.push([e / DECADES, VMAX * Math.pow(10, e - DECADES)]); return out; }
-  return [0, 0.25, 0.5, 0.75, 1].map(t => [t, VMAX * t]);
-}
-function drawColorbar(cv, w, gExt, ox, oy){
-  const g = gExt || setupCanvas(cv, w, 60); ox = ox || 0; oy = oy || 0;
-  const L = ox + 10, W = w - 40;
-  for (let x = 0; x < W; x++) { g.fillStyle = colorAt(x / W); g.fillRect(L + x, oy + 6, 1.5, 18); }
-  g.strokeStyle = '#111'; g.lineWidth = 1; g.strokeRect(L, oy + 6, W, 18);
-  g.fillStyle = '#111'; g.font = '13px sans-serif'; g.textAlign = 'center';
-  for (const [t, v] of colorbarLabels()) {
-    g.textAlign = t === 0 ? 'left' : t === 1 ? 'right' : 'center';   // 양 끝 글자가 잘리지 않게
-    g.fillText(fmt(v), L + t * W, oy + 40);
-  }
-  g.textAlign = 'left'; g.fillText('농도 (quanta/m³), 3개 프리셋 공통 색 범위' + ($('logScale').checked ? ' · 로그 눈금, 가장 연한 색 = 최대의 1/1000 이하' : ' · 선형 눈금'), L, oy + 57);
-}
-function select(k){
-  sel = k;
-  document.querySelectorAll('button.preset').forEach(b => b.classList.toggle('sel', +b.dataset.k === k));
-  document.querySelectorAll('.mapbox').forEach((d, i) => d.classList.toggle('sel', i === k));
-  drawAll(); showZoneTable();
-}
 
-// ---------- 표 ----------
-function fmt(v){
-  if (v === undefined || v === null || Number.isNaN(v)) return '-';
-  if (v === 0) return '0';
-  return Math.abs(v) >= 0.001 ? (+v.toPrecision(3)).toString() : v.toExponential(2);
-}
-const ZONE_ORDER = ['일반 진료 구역', '스테이션', '소생실', '접수·분류·대기', '분류소', '검사', '오염 복도', '전실', '격리실 1', '격리실 2', '격리실 3', '격리실 4'];
-function showZoneTable(){
-  if (!DATA) return;
-  const now = document.querySelector('input[name=zmode]:checked').value === 'now', fi = frameIdx();
-  const R = DATA.results;
-  let h = '<tr><th>구역</th>' + DATA.presets.map((P, k) => '<th' + (k === sel ? ' style="background:#dbeafe"' : '') + '>' + P.title.replace(':', '<br>') + '</th>').join('') + '</tr>';
-  const val = (r, nm) => {
-    if (r.error) return NaN;
-    if (nm === '방 전체') return now ? r.zoneFrames[Math.min(fi, r.zoneFrames.length - 1)].all : r.allAvg;
-    const z = r.zoneNames.indexOf(nm); if (z < 0) return undefined;
-    return now ? r.zoneFrames[Math.min(fi, r.zoneFrames.length - 1)].zones[z] : r.zoneAvg[z];
+// 화면의 입력값을 읽어 계산용 값으로 바꾸기 (% → 0~1)
+function readInputs() {
+  const g = function (id) { return Number(document.getElementById("in_" + id).value); };
+  return {
+    a: g("a"), V: g("V"), q: g("q"), beta: g("beta"), nN: g("nN"), nF: g("nF"),
+    triage: document.getElementById("in_triage").checked,
+    s: g("s") / 100, tb: g("tb"), T: g("T"),
+    f: g("f") / 100, c: g("c") / 100, h: g("h") / 100
   };
-  for (const nm of ['방 전체'].concat(ZONE_ORDER)) {
-    if (!R.some(r => !r.error && (nm === '방 전체' || r.zoneNames.includes(nm)))) continue;
-    h += '<tr><th>' + nm + '</th>' + R.map((r, k) => {
-      const v = val(r, nm);
-      const isSrc = !r.error && nm !== '방 전체' && r.zoneNames[srcZone(k)] === nm;
-      return '<td class="num">' + (v === undefined ? '없음' : fmt(v)) + (isSrc ? ' <b style="color:#dc2626">●</b>' : '') + '</td>';
-    }).join('') + '</tr>';
-  }
-  $('zoneTable').innerHTML = h;
-  // 격리실 문으로 들어오는 공기 (음압 확인)
-  const lines = [];
-  R.forEach((r, k) => {
-    if (r.error) return;
-    const iso = r.zoneNames.map((n, z) => [n, z]).filter(([n]) => n.startsWith('격리실'));
-    if (!iso.length) return;
-    lines.push(DATA.presets[k].title.split(':')[0] + ': ' + iso.map(([n, z]) => n + ' ' + (r.zoneInflow[z] >= 0 ? '+' : '') + r.zoneInflow[z].toFixed(1)).join(', '));
-  });
-  $('isoNote').innerHTML = '● = 감염원이 있는 구역. 표의 값은 ' + (now ? '슬라이더 시각(' + fi * 5 + '분)의 구역 평균' : '0~4시간 동안의 시간 평균') + '입니다.<br>' +
-    '문을 통해 격리실로 들어오는 공기 (m³/h, + = 밖에서 안으로, 음압 방향): ' + lines.join(' / ') +
-    '<br>실제 압력(Pa)은 계산하지 못합니다. 음압은 "배기량 > 급기량"으로만 표현합니다.';
-}
-function srcZone(k){
-  const P = DATA.presets[k], r = DATA.results[k];
-  const i = Math.floor(P.src.x / P.dx), j = Math.floor(P.src.y / P.dx);
-  // 구역 이름을 다시 찾기: 시뮬레이션 결과의 구역 순서와 같은 규칙
-  const x = (i + 0.5) * P.dx, y = (j + 0.5) * P.dx;
-  for (const z of P.zones) if (x > z.x0 && x < z.x1 && y > z.y0 && y < z.y1) return r.zoneNames.indexOf(z.name);
-  return r.zoneNames.indexOf('일반 진료 구역');
-}
-function showBalance(){
-  let h = '<tr><th>프리셋</th><th>배출</th><th>공간 안</th><th>배기로 나감</th><th>입구로 나감</th><th>수지 오차</th><th>dt (s)</th><th>φ 반복 횟수</th></tr>';
-  DATA.results.forEach((r, k) => {
-    if (r.error) { h += '<tr><td>' + DATA.presets[k].title + '</td><td colspan="7">' + r.error + '</td></tr>'; return; }
-    const b = r.bal, inn = b.initial + b.emitted, out = b.inRoom + b.exhaustOut + b.entranceOut + b.lamOut;
-    h += '<tr><td>' + DATA.presets[k].title.split(':')[0] + '</td><td class="num">' + inn.toFixed(2) + '</td><td class="num">' + b.inRoom.toFixed(2) +
-      '</td><td class="num">' + b.exhaustOut.toFixed(2) + '</td><td class="num">' + b.entranceOut.toFixed(2) + '</td><td class="num">' + (Math.abs(inn - out) / inn * 100).toExponential(1) +
-      ' %</td><td class="num">' + r.dt.toFixed(3) + '</td><td class="num">' + r.phiIter + '</td></tr>';
-  });
-  $('balTable').innerHTML = h;
-}
-function showTests(){
-  let h = '<tr><th>#</th><th>조건</th><th>기대값</th><th>계산값</th><th>오차</th><th>허용</th><th>결과</th></tr>';
-  for (const t of DATA.tests) {
-    h += '<tr><td>' + t.id + '</td><td>' + t.cond + '</td><td>' + t.expect + '</td><td>' + t.got + '</td><td class="num">' +
-      (Number.isFinite(t.err) ? (t.err * 100).toFixed(3) + ' %' : '-') + '</td><td class="num">' + (Number.isFinite(t.tol) ? (t.tol * 100) + ' %' : '-') +
-      '</td><td class="' + (t.pass ? 'pass' : 'failt') + '">' + (t.pass ? '통과' : '실패') + '</td></tr>';
-  }
-  $('testTable').innerHTML = h;
-  const tb = $('testBanner'), ok = DATA.tests.every(t => t.pass);
-  tb.className = 'banner ' + (ok ? 'ok' : 'fail');
-  tb.textContent = ok ? '6개 모두 통과 (6번 격자 비교와 8번 재현성은 이번 범위에서 제외)' : '실패한 테스트가 있습니다. 결과 화면을 믿지 마세요.';
-}
-function showInputs(){
-  const c = DATA.common, a = DATA.assume;
-  const rows = [
-    ['방 크기', '20 × 15 m', ''], ['천장 높이 H', c.H + ' m', ''], ['칸 크기 dx', c.dx + ' m', ''],
-    ['배출량 q', c.q + ' quanta/h', ''], ['확산 계수 D', c.D + ' m²/s', '가정값'], ['λ (침강+비활성화)', c.lambdaPerH + ' /h', ''],
-    ['시뮬레이션 시간', c.tEnd / 3600 + ' 시간', ''], ['계산 방식', '기류 모드 (환기를 급기·배기 유량으로 넣음)', ''],
-    ['격리실 급기량', '배기량 × ' + a.ISO_SUPPLY_RATIO, '가정값'], ['격리실·전실 문 폭', a.ISO_DOOR_W + ' m', '가정값'],
-    ['분류소·검사 배기', '환기 ' + a.TRIAGE_EXHAUST_ACH + '회분, 배기만', '가정값'], ['소생실 환기', '6회, 급기 = 배기', '가정값']
-  ];
-  $('inputTable').innerHTML = '<tr><th>항목</th><th>값</th><th></th></tr>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + (r[2] ? '<span class="tag">' + r[2] + '</span>' : '') + '</td></tr>').join('');
-  $('assumeList').innerHTML = [
-    '치수와 설비(급기구·배기구) 위치는 모두 가정값입니다.',
-    '모든 문은 열린 문으로 계산합니다. 문 폭이 칸(0.5 m)과 일부만 겹치면 겹친 비율만큼 열린 것으로 봅니다.',
-    '병상은 기류를 막지 않습니다(그림에만 표시).',
-    '총 환기량 Q = 환기 횟수 × 구역 부피. 급기구끼리, 배기구끼리 똑같이 나눕니다.',
-    '건물 입구 바깥은 φ = 0으로 고정해 남거나 모자란 공기가 입구로 드나들게 합니다. 입구로 들어오는 바깥 공기의 농도는 0입니다.',
-    '설계안 2: 격리실 배기구는 환자 머리 쪽(x = 0.3 m), 급기구는 문 쪽(x = 2.7 m), 각 방의 중간 높이에 둡니다.',
-    '설계안 2: 오염 복도는 아래쪽 검사 구역과 벽 없이 이어진다고 봅니다. 분류소와 검사 사이에도 벽을 두지 않습니다.',
-    '설계안 2: 보호자 통로(x −1.5~0)는 계산 영역 밖입니다. 시야창은 공기가 통하지 않으므로 벽과 같습니다.',
-    '구역 평균은 칸 중심이 구역 사각형 안에 있는 칸의 평균입니다.',
-    '2차원 근사: 높이 방향은 고르게 섞인다고 봅니다. 천장 급기, 체온 상승 기류, 근거리 호흡, 접촉 전파는 반영하지 않습니다.'
-  ].map(s => '<li>' + s + '</li>').join('');
 }
 
-// ---------- PNG 저장 ----------
-function savePNG(which){
-  if (!DATA) return;
-  const fi = frameIdx(), P0 = DATA.presets[0];
-  const out = document.createElement('canvas'), g = out.getContext('2d');
-  const list = which === 'compare' ? [0, 1, 2] : [sel];
-  const sc = which === 'compare' ? 30 : 46, gap = 20, pad = 20, titleH = 56, footH = 100;
-  const W = pad * 2 + list.length * P0.Lx * sc + (list.length - 1) * gap, Hh = titleH + P0.Ly * sc + footH;
-  out.width = W; out.height = Hh;
-  g.fillStyle = '#fff'; g.fillRect(0, 0, W, Hh);
-  list.forEach((k, n) => {
-    const ox = pad + n * (P0.Lx * sc + gap);
-    g.fillStyle = '#111'; g.font = 'bold 20px sans-serif'; g.textAlign = 'left';
-    g.fillText(DATA.presets[k].title, ox, 26);
-    g.font = '15px sans-serif'; g.fillText(DATA.presets[k].sub + ' · t = ' + fi * 5 + '분', ox, 46);
-    drawPlan(g, ox, titleH, sc, k, fi, which !== 'compare');
+// 슬라이더 옆에 현재 값 글자로 보여 주기
+function showValues() {
+  INPUTS.forEach(function (it) {
+    const span = document.getElementById("v_" + it.id);
+    if (!span) return;
+    const el = document.getElementById("in_" + it.id);
+    span.textContent = (it.type === "check") ? (el.checked ? "켜기" : "끄기") : el.value + " " + it.unit;
   });
-  drawColorbar(null, Math.min(W - 2 * pad, 900), g, pad, titleH + P0.Ly * sc + 6);
-  g.fillStyle = '#7c2d12'; g.font = 'bold 15px sans-serif'; g.textAlign = 'left';
-  g.fillText('2차원 근사, 상대 비교용입니다. 공기 전파만 계산하며 실제 감염자 수를 예측하지 않습니다. 치수와 설비 위치는 가정값입니다.', pad, Hh - 14);
-  if (!trusted) { g.fillStyle = '#b91c1c'; g.font = 'bold 18px sans-serif'; g.fillText('⚠ 검증 테스트 미통과 결과', pad, Hh - 36); }
-  const name = (which === 'compare' ? '비교_히트맵' : '히트맵_프리셋' + (sel + 1)) + '_t' + String(fi * 5).padStart(3, '0') + '분.png';
-  try {
-    const a = document.createElement('a'); a.href = out.toDataURL('image/png'); a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    $('pngNote').textContent = name + ' 저장을 요청했습니다.';
-  } catch (e) { $('pngNote').textContent = 'PNG 저장 실패: ' + e.message; }
 }
 
-// ---------- 연결 ----------
-document.querySelectorAll('button.preset').forEach(b => b.onclick = () => select(+b.dataset.k));
-$('tSlider').addEventListener('input', drawAll);
-$('logScale').addEventListener('change', drawAll);
-$('arrows').addEventListener('change', drawAll);
-document.querySelectorAll('input[name=zmode]').forEach(r => r.addEventListener('change', showZoneTable));
-$('pngCompare').onclick = () => savePNG('compare');
-$('pngDetail').onclick = () => savePNG('detail');
-$('btnRun').onclick = runAll;
-window.addEventListener('resize', drawAll);
-document.querySelector('button.preset[data-k="0"]').classList.add('sel');
-startEngine();
-runAll();
+// 프리셋: 두 구역 모델 A~F (설계표에서 만들기, h는 0~1 → %로)
+function applyPreset(name) {
+  const d = DESIGNS[name];
+  document.getElementById("in_nN").value = 2;        // 근거리 2명
+  document.getElementById("in_nF").value = 28;       // 원거리 28명
+  document.getElementById("in_a").value = d.a;       // 환기 횟수
+  document.getElementById("in_triage").checked = d.triage; // 입구 분류
+  document.getElementById("in_h").value = d.h * 100; // 후드 적용률 (%)
+  update();
+}
+
+// 보기 좋은 축 최댓값 고르기 (1, 2, 5 × 10의 거듭제곱)
+function niceMax(v) {
+  if (!(v > 0)) return 1;
+  const p10 = Math.pow(10, Math.floor(Math.log10(v)));
+  const steps = [1, 2, 2.5, 5, 10];
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i] * p10 >= v) return steps[i] * p10;
+  }
+  return 10 * p10;
+}
+
+// 꺾은선 그래프 그리기
+// opt: { xMin, xMax, xStep, xLabel, yLabel, current(현재 x값), series:[{color, dash, points:[[x,y],…]}], message }
+function drawGraph(canvasId, opt) {
+  const cv = document.getElementById(canvasId);
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  if (opt.message) { // 계산할 수 없을 때는 안내 문구만
+    ctx.fillStyle = "#c1121f"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(opt.message, W / 2, H / 2);
+    return;
+  }
+
+  const L = 80, R = 20, T = 20, B = 60;          // 여백 (px)
+  let yMax = 0;
+  opt.series.forEach(function (s) { s.points.forEach(function (pt) { if (pt[1] > yMax) yMax = pt[1]; }); });
+  yMax = niceMax(yMax * 1.05);
+  const X = function (x) { return L + (x - opt.xMin) / (opt.xMax - opt.xMin) * (W - L - R); }; // 값 → 가로 위치
+  const Y = function (y) { return H - B - y / yMax * (H - T - B); };                          // 값 → 세로 위치
+
+  // 눈금과 격자
+  ctx.font = "16px sans-serif"; ctx.fillStyle = "#222"; ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = 0; i <= 5; i++) {
+    const yv = yMax * i / 5;
+    ctx.beginPath(); ctx.moveTo(L, Y(yv)); ctx.lineTo(W - R, Y(yv)); ctx.stroke();
+    ctx.fillText(Number(yv.toFixed(2)), L - 8, Y(yv));
+  }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let xv = opt.xMin; xv <= opt.xMax + 1e-9; xv += opt.xStep) {
+    ctx.beginPath(); ctx.moveTo(X(xv), T); ctx.lineTo(X(xv), H - B); ctx.stroke();
+    ctx.fillText(xv, X(xv), H - B + 6);
+  }
+  // 축
+  ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+  ctx.font = "bold 17px sans-serif";
+  ctx.fillText(opt.xLabel, (L + W - R) / 2, H - 26);
+  ctx.save(); ctx.translate(20, (T + H - B) / 2); ctx.rotate(-Math.PI / 2);
+  ctx.textBaseline = "middle"; ctx.fillText(opt.yLabel, 0, 0); ctx.restore();
+
+  // 현재 입력값 위치 (회색 점선)
+  ctx.strokeStyle = "#888"; ctx.setLineDash([4, 4]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(X(opt.current), T); ctx.lineTo(X(opt.current), H - B); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle = "#555"; ctx.font = "15px sans-serif";
+  const nearRight = X(opt.current) > W - R - 50;                  // 오른쪽 끝이면 글자를 왼쪽에
+  ctx.textAlign = nearRight ? "right" : "left";
+  ctx.fillText("현재", X(opt.current) + (nearRight ? -4 : 4), T);
+
+  // 선 그리기
+  opt.series.forEach(function (s) {
+    ctx.strokeStyle = s.color; ctx.lineWidth = 3.5; ctx.setLineDash(s.dash || []);
+    ctx.beginPath();
+    s.points.forEach(function (pt, i) {
+      if (i === 0) ctx.moveTo(X(pt[0]), Y(pt[1])); else ctx.lineTo(X(pt[0]), Y(pt[1]));
+    });
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+}
+
+// 범례 만들기: items = [{color, dash, text}]
+function drawLegend(id, items) {
+  document.getElementById(id).innerHTML = items.map(function (it) {
+    const style = it.dash && it.dash.length ? "dashed" : "solid";
+    return '<span><span class="sw" style="border-top:4px ' + style + ' ' + it.color + '"></span>' + it.text + "</span>";
+  }).join("");
+}
+
+const COLORS = { A: "#111111", B: "#1f77b4", C: "#2ca02c", D: "#ff7f0e", E: "#9467bd", F: "#d62728" };
+const DASHES = { A: [], B: [10, 6], C: [], D: [10, 6], E: [], F: [3, 4] };
+
+// 입력이 바뀔 때마다 전부 다시 계산
+function update() {
+  showValues();
+  const x = readInputs();
+  const warn = checkInputs(x);
+  const wbox = document.getElementById("warning");
+
+  if (warn) { // 경고: 결과와 그래프를 비움
+    wbox.style.display = "block"; wbox.textContent = "⚠ " + warn + " 결과를 계산하지 않습니다.";
+    ["outNear", "outFar", "outAll", "outN"].forEach(function (id) { document.getElementById(id).textContent = "—"; });
+    ["g1", "g2"].forEach(function (id) { drawGraph(id, { message: "입력값을 확인하세요" }); });
+    ["lg1", "lg2"].forEach(function (id) { document.getElementById(id).innerHTML = ""; });
+    return;
+  }
+  wbox.style.display = "none";
+
+  // 결과 카드
+  const r = model(x);
+  document.getElementById("outNear").textContent = (r.Pnear * 100).toFixed(1) + "%";
+  document.getElementById("outFar").textContent = (r.Pfar * 100).toFixed(1) + "%";
+  document.getElementById("outN").textContent = r.N.toFixed(2) + "명";
+  const pAll = overallP(r, x);
+  document.getElementById("outAll").textContent = (pAll === null) ? "—" : (pAll * 100).toFixed(1) + "%";
+
+  // 그래프 1: 환기 횟수 1~24
+  const near1 = [], far1 = [];
+  for (let a = 1; a <= 24; a++) {
+    const rr = model(Object.assign({}, x, { a: a }));
+    near1.push([a, rr.Pnear * 100]);
+    far1.push([a, rr.Pfar * 100]);
+  }
+  drawGraph("g1", { xMin: 0, xMax: 24, xStep: 2, xLabel: "시간당 환기 횟수 (회/h)", yLabel: "감염 확률 (%)",
+                    current: x.a, series: [{ color: "#d62728", points: near1 }, { color: "#1f77b4", dash: [10, 6], points: far1 }] });
+  drawLegend("lg1", [{ color: "#d62728", text: "P근 (옆자리)" }, { color: "#1f77b4", dash: [10, 6], text: "P원 (먼 자리)" }]);
+
+  // 그래프 2: 선별 성공률 0~100%, 설계 A~F
+  const series2 = [], legend2 = [];
+  Object.keys(DESIGNS).forEach(function (k) {
+    const d = DESIGNS[k];
+    if (d.triage && x.tb > x.T) { // 분류 설계는 tb > T면 계산할 수 없음
+      legend2.push({ color: COLORS[k], dash: DASHES[k], text: d.name + ": 계산 불가 (tb > T)" });
+      return;
+    }
+    const pts = [];
+    let worst = 0;
+    for (let s = 0; s <= 100; s += 2) {
+      const rr = model(Object.assign({}, x, { a: d.a, triage: d.triage, h: d.h, s: s / 100 }));
+      pts.push([s, rr.N]);
+      if (rr.N > worst) worst = rr.N;
+    }
+    series2.push({ color: COLORS[k], dash: DASHES[k], points: pts });
+    legend2.push({ color: COLORS[k], dash: DASHES[k], text: d.name + " (최대 " + worst.toFixed(2) + "명)" });
+  });
+  drawGraph("g2", { xMin: 0, xMax: 100, xStep: 10, xLabel: "선별 성공률 (%)", yLabel: "예상 2차 감염자 수 N (명)",
+                    current: x.s * 100, series: series2 });
+  drawLegend("lg2", legend2);
+
+}
+
+// 테스트 실행 후 표로 보여 주기
+function runTests() {
+  let passCount = 0;
+  let html = "<table><tr><th>번호</th><th>조건</th><th>항목</th><th>기댓값</th><th>계산값</th><th>결과</th></tr>";
+  TESTS.forEach(function (t) {
+    const res = runOneTest(t);
+    if (res.pass) passCount++;
+    const unit = res.isProb ? "%" : "명";
+    const name = { Pnear: "P근", Pfar: "P원", N: "N" }[t.key];
+    html += "<tr><td>" + t.no + "</td><td>" + t.desc + "</td><td>" + name + "</td><td>" + t.exp.toFixed(res.isProb ? 1 : 2) + unit +
+            "</td><td>" + res.raw.toFixed(res.isProb ? 2 : 3) + unit + "</td><td class='" + (res.pass ? "pass'>통과" : "fail'>실패") + "</td></tr>";
+  });
+  html += "</table><p><b>" + TESTS.length + "개 중 " + passCount + "개 통과</b></p>";
+  document.getElementById("testResult").innerHTML = html;
+}
+
+buildInputs();
+update();
+window.addEventListener("resize", update); // 창 크기가 바뀌면 그래프 다시 그리기
 </script>
 </body>
 </html>
